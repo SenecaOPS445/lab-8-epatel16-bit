@@ -1,0 +1,53 @@
+---
+- name: Configure OPS445 Linux VM
+  hosts: all
+  become: true
+
+  vars:
+    seneca_id: epatel16
+    ssh_pub_key: "{{ lookup('file', '/home/ansible/.ssh/id_rsa.pub') }}"  # Change path if needed
+
+  tasks:
+    - name: Ensure Apache is updated
+      yum:
+        name: httpd
+        state: latest
+
+    - name: Install EPEL repository
+      yum:
+        name: epel-release
+        state: present
+
+    - name: Remove 'tree' package
+      yum:
+        name: tree
+        state: absent
+
+    - name: Set hostname to Seneca ID
+      hostname:
+        name: "{{ seneca_id }}"
+
+    - name: Create a new user with Seneca ID
+      user:
+        name: "{{ seneca_id }}"
+        state: present
+        groups: wheel
+        append: yes
+        shell: /bin/bash
+        create_home: yes
+
+    - name: Add SSH public key to new user
+      authorized_key:
+        user: "{{ seneca_id }}"
+        state: present
+        key: "{{ ssh_pub_key }}"
+
+    - name: Create directory structure for labs
+      file:
+        path: "/home/{{ seneca_id }}/ops445/lab{{ item }}"
+        state: directory
+        owner: "{{ seneca_id }}"
+        group: "{{ seneca_id }}"
+        mode: '0755'
+      loop: "{{ range(1,9) | list }}"
+
